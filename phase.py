@@ -19,7 +19,9 @@ lam2   = 30.0        # Final wavelength of the simulations (um)
 lamRP  = 500.0       # Resolving power
 radunit= 'ppm'       # Desired radiation unit (https://psg.gsfc.nasa.gov/helpmodel.php#units)
 #psgurl = 'http://localhost:3000' # URL of the PSG server - For PSG/Docker
-psgurl = 'http://localhost' # URL of the PSG server
+#psgurl = 'http://localhost' # URL of the local PSG server
+psgurl = 'https://psg.gsfc.nasa.gov' # URL of the PSG server
+
 
 # Convert netCDF file to PSG/GCM format
 from gcm_exocam import convertgcm
