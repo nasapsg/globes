@@ -37,7 +37,7 @@ def atmosatm(ptfile = 'profile.pt', hcfile = 'hcaer.out', filebase = ''):
         rho = 0.64                                               # Particle density [g/cm3]
         data[:,0] = data[:,0]/1e5                                # Convert altitude from cm to km
         naero = np.interp(gprof[:,2], data[:,0], data[:,1])      # Particle abundance [#/cm3]
-        raero = np.interp(gprof[:,2], data[:,0], data[:,2])      # Particle radius [m]
+        raero = np.interp(gprof[:,2], data[:,0], data[:,2])      # Particle radius [cm]
         vaero = np.pi*(4.0/3.0)*raero**3.0                       # Volume of particle [cm3]
         maero = naero*vaero*rho                                  # Haze mass density [g/cm3]
         xaero = maero/(gatm*dens/6.0221409e+23)                  # Haze abundance [g/g]
