@@ -141,27 +141,27 @@ def psgspec(config=[], filebase = 'atmos_psg', showplot=True):
 # Main module if the user is calling this as a script
 if __name__ == "__main__":
     # ATMOS output files
-    ptfile = 'data/atmos_profile.pt' # File containing the molecular abundances and T/P profiles
-    hcfile = 'data/atmos_hcaer.out'  # File containing the hazes - To disable hazes, simply set hcfile = ''
+    ptfile = 'data/atmos_profile.pt'    # File containing the molecular abundances and T/P profiles
+    hcfile = 'data/atmos_hcaer.out'     # File containing the hazes - To disable hazes, simply set hcfile = ''
 
     # Parameters of the simulation
-    diameter = 0.920 * 12742.0   # Planet's diameter [km], 12742 km is Earth's diameter
-    gravity  = 0.930 * 9.81      # Planet's gravity [m/2], 9.81 m/s2 is Earth's gravity
+    diameter = 0.920 * 12742.0          # Planet's diameter [km], 12742 km is Earth's diameter
+    gravity  = 0.930 * 9.81             # Planet's gravity [m/2], 9.81 m/s2 is Earth's gravity
 
     # Orbital parameters
-    distance = 12.4              # Distance to the star/planet from Earth [pc]
-    semiaxis = 28.17e-3          # Distance planet-star [AU]
-    period = 6.1                 # Orbital period [days]
-    ttransit = 3345.0            # Transit duration [seconds]
-    phase = 180                  # Orbital phase, 180:Primary_transit, 0:Secondary, 90/270:Quadrature
+    distance = 12.4                     # Distance to the star/planet from Earth [pc]
+    semiaxis = 28.17e-3                 # Distance planet-star [AU]
+    period = 6.1                        # Orbital period [days]
+    ttransit = 3345.0                   # Transit duration [seconds]
+    phase = 180                         # Orbital phase, 180:Primary_transit, 0:Secondary, 90/270:Quadrature
 
     # Stellar parameters
-    stype = 'M'                  # Spectral type
-    stemp = 2566.0               # TRAPPIST-1 temperature [K] from Agol et al 2020
-    sradius = 0.1192             # TRAPPIST-1 radius [Sun radius unit] from Agol et al 2020
+    stype = 'M'                         # Spectral type
+    stemp = 2566.0                      # TRAPPIST-1 temperature [K] from Agol et al 2020
+    sradius = 0.1192                    # TRAPPIST-1 radius [Sun radius unit] from Agol et al 2020
 
     # Integration time
-    ntransits = 1.0              # Number of transits
+    ntransits = 1.0                     # Number of transits
 
     # Convert ATMOS files to a configuration file
     newf = atmosatm(ptfile, hcfile)
