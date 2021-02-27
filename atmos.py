@@ -41,8 +41,8 @@ def atmosatm(ptfile = 'profile.pt', hcfile = 'hcaer.out', filebase = ''):
         vaero = np.pi*(4.0/3.0)*raero**3.0                       # Volume of particle [cm3]
         maero = naero*vaero*rho                                  # Haze mass density [g/cm3]
         xaero = maero/(gatm*dens/6.0221409e+23)                  # Haze abundance [g/g]
-        gprof[:,17] = xaero
-        gprof[:,18] = raero/1e2
+        gprof[:,16] = xaero
+        gprof[:,17] = raero/1e2
         mols = '%s,Haze,Haze_size' % mols; ncols=19
     #Endif
 
@@ -126,7 +126,6 @@ def psgspec(config=[], filebase = 'atmos_psg', showplot=True):
             plt.plot(data[:,0],data[:,i+1],label=cols[i])
         #Endfors
         plt.xscale('log')
-        plt.yscale('log')
         plt.xlabel(xunit)
         plt.ylabel(yunit)
         plt.ylim([max(data[:,1])/100.0,max(data[:,1])*1.2])
@@ -141,6 +140,10 @@ def psgspec(config=[], filebase = 'atmos_psg', showplot=True):
 
 # Main module if the user is calling this as a script
 if __name__ == "__main__":
+    # ATMOS output files
+    ptfile = 'data/atmos_profile.pt' # File containing the molecular abundances and T/P profiles
+    hcfile = 'data/atmos_hcaer.out'  # File containing the hazes - To disable hazes, simply set hcfile = ''
+
     # Parameters of the simulation
     diameter = 0.920 * 12742.0   # Planet's diameter [km], 12742 km is Earth's diameter
     gravity  = 0.930 * 9.81      # Planet's gravity [m/2], 9.81 m/s2 is Earth's gravity
@@ -161,7 +164,7 @@ if __name__ == "__main__":
     ntransits = 1.0              # Number of transits
 
     # Convert ATMOS files to a configuration file
-    newf = atmosatm('data/atmos_profile.pt', 'data/atmos_hcaer.out')
+    newf = atmosatm(ptfile, hcfile)
 
     # Add geometrical/observational parameters for the simulation
     newf.append('<OBJECT>Exoplanet')                             # Object type (e.g., Exoplanet) or object name for the main bodies in the Solar System
