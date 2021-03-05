@@ -22,14 +22,29 @@ def convertgcm(filein = 'data/gcm_exocam.nc', fileout = 'gcm_psg.dat', itime=0):
 	V = (nfile.variables['V'])[:];           V = V[itime,::-1,:,:]
 	T = (nfile.variables['T'])[:];           T = T[itime,::-1,:,:]
 	TS = (nfile.variables['TS'])[:];         TS = TS[itime,:,:]
+	#FUS = (nfile.variables['FUS'])[:];   	 FUS = FUS[itime,0,:,:]
+	#FDS = (nfile.variables['FDS'])[:];   	 FDS = FDS[itime,0,:,:]; ASDIR = FUS/FDS
 	ASDIR = (nfile.variables['ASDIR'])[:];   ASDIR = ASDIR[itime,:,:]
-	CLDICE = (nfile.variables['CLDICE'])[:]; CLDICE = CLDICE[itime,::-1,:,:] + 1e-30
-	CLDLIQ = (nfile.variables['CLDLIQ'])[:]; CLDLIQ = CLDLIQ[itime,::-1,:,:] + 1e-30
-	CH4 = (nfile.variables['ch4vmr'])[:];    CH4 = float(CH4[itime]) + T*0.0 + 1e-30
-	CO2 = (nfile.variables['co2vmr'])[:];    CO2 = float(CO2[itime]) + T*0.0 + 1e-30
-	N2O = (nfile.variables['n2ovmr'])[:];    N2O = float(N2O[itime]) + T*0.0 + 1e-30
+	CLDICE = (nfile.variables['CLDICE'])[:]; CLDICE = CLDICE[itime,::-1,:,:]
+	CLDLIQ = (nfile.variables['CLDLIQ'])[:]; CLDLIQ = CLDLIQ[itime,::-1,:,:]
+	REI = (nfile.variables['REI'])[:];       REI = REI[itime,::-1,:,:]/1e6
+	REL = (nfile.variables['REL'])[:];       REL = REL[itime,::-1,:,:]/1e6
+	CH4 = (nfile.variables['ch4vmr'])[:];    CH4 = float(CH4[itime]) + T*0.0
+	CO2 = (nfile.variables['co2vmr'])[:];    CO2 = float(CO2[itime]) + T*0.0
+	N2O = (nfile.variables['n2ovmr'])[:];    N2O = float(N2O[itime]) + T*0.0
 	H2O = (nfile.variables['Q'])[:];         H2O = H2O[itime,::-1,:,:]; H2O = H2O/(1.0-H2O); H2O = H2O*(28.0/18.0)
 	nfile.close()
+
+	# Fix variables
+	ASDIR = np.where((ASDIR>=0) & (ASDIR<=1.0) & (np.isfinite(ASDIR)), ASDIR, 0.3)
+	CLDICE = np.where((CLDICE>0) & (np.isfinite(CLDICE)), CLDICE, 1e-30)
+	CLDLIQ = np.where((CLDLIQ>0) & (np.isfinite(CLDLIQ)), CLDLIQ, 1e-30)
+	REI = np.where((REI>0) & (np.isfinite(REI)), REI, 1e-6)
+	REL = np.where((REL>0) & (np.isfinite(REL)), REL, 1e-6)
+	CH4 = np.where((CH4>0) & (np.isfinite(CH4)), CH4, 1e-30)
+	CO2 = np.where((CO2>0) & (np.isfinite(CO2)), CO2, 1e-30)
+	N2O = np.where((N2O>0) & (np.isfinite(N2O)), N2O, 1e-30)
+	H2O = np.where((H2O>0) & (np.isfinite(H2O)), H2O, 1e-30)
 
 	# Compute profiles of pressure and N2 abundances
 	sz = np.shape(T)
@@ -71,11 +86,11 @@ def convertgcm(filein = 'data/gcm_exocam.nc', fileout = 'gcm_psg.dat', itime=0):
 	newf.append('<ATMOSPHERE-PUNIT>bar')
 	newf.append('<ATMOSPHERE-WEIGHT>28.0')
 	newf.append('<ATMOSPHERE-LAYERS>0')
-	newf.append('<ATMOSPHERE-NGAS>5')
-	newf.append('<ATMOSPHERE-GAS>N2,H2O,CO2,N2O,CH4')
-	newf.append('<ATMOSPHERE-TYPE>HIT[22],HIT[1],HIT[2],HIT[4],HIT[6]')
-	newf.append('<ATMOSPHERE-ABUN>1,1,1,1,1')
-	newf.append('<ATMOSPHERE-UNIT>scl,scl,scl,scl,scl')
+	newf.append('<ATMOSPHERE-NGAS>3')
+	newf.append('<ATMOSPHERE-GAS>N2,CO2,H2O')
+	newf.append('<ATMOSPHERE-TYPE>HIT[22],HIT[1],HIT[2]')
+	newf.append('<ATMOSPHERE-ABUN>99,400,1')
+	newf.append('<ATMOSPHERE-UNIT>pct,ppm,scl')
 	newf.append('<ATMOSPHERE-NMAX>2')
 	newf.append('<ATMOSPHERE-LMAX>2')
 	newf.append('<ATMOSPHERE-NAERO>2')
@@ -84,12 +99,12 @@ def convertgcm(filein = 'data/gcm_exocam.nc', fileout = 'gcm_psg.dat', itime=0):
 	newf.append('<ATMOSPHERE-AABUN>1,1')
 	newf.append('<ATMOSPHERE-AUNIT>scl,scl')
 	newf.append('<ATMOSPHERE-ASIZE>1,1')
-	newf.append('<ATMOSPHERE-ASUNI>um,um')
+	newf.append('<ATMOSPHERE-ASUNI>scl,scl')#
 
 	# Save surface parameters
 	newf.append('<SURFACE-TEMPERATURE>300')
 	newf.append('<SURFACE-ALBEDO>0.2')
-	newf.append('<SURFACE-EMISSIVITY>0.8')
+	newf.append('<SURFACE-EMISSIVITY>1.0')
 	newf.append('<SURFACE-NSURF>0')
 
 	# Simulation parameters
@@ -113,7 +128,7 @@ def convertgcm(filein = 'data/gcm_exocam.nc', fileout = 'gcm_psg.dat', itime=0):
 	# Save configuration file
 	vars = '<ATMOSPHERE-GCM-PARAMETERS>'
 	vars = vars + str("%d,%d,%d,%.1f,%.1f,%.2f,%.2f" %(sz[0],sz[1],sz[2],lon[0],lat[0],lon[1]-lon[0],lat[1]-lat[0]))
-	vars = vars + ',Winds,Tsurf,Psurf,Albedo,Temperature,Pressure,N2,H2O,CO2,N2O,CH4,Water,WaterIce'
+	vars = vars + ',Winds,Tsurf,Psurf,Albedo,Temperature,Pressure,H2O,Water,WaterIce,Water_size,WaterIce_size'#
 	newf.append(vars)
 	with open(fileout,'w') as fw:
 		for i in newf: fw.write(i+'\n')
@@ -123,20 +138,20 @@ def convertgcm(filein = 'data/gcm_exocam.nc', fileout = 'gcm_psg.dat', itime=0):
 		fb.write(np.asarray(U,order='C'))
 		fb.write(np.asarray(V,order='C'))
 		fb.write(np.asarray(TS,order='C'))
-		fb.write(np.log10(np.asarray(PS,order='C')))
+		fb.write(np.asarray(PS,order='C'))
 		fb.write(np.asarray(ASDIR,order='C'))
 		fb.write(np.asarray(T,order='C'))
 		fb.write(np.log10(np.asarray(np.transpose(press3D),order='C')))
-		fb.write(np.log10(np.asarray(N2,order='C')))
 		fb.write(np.log10(np.asarray(H2O,order='C')))
-		fb.write(np.log10(np.asarray(np.transpose(CO2),order='C')))
-		fb.write(np.log10(np.asarray(np.transpose(N2O),order='C')))
-		fb.write(np.log10(np.asarray(np.transpose(CH4),order='C')))
 		fb.write(np.log10(np.asarray(CLDLIQ,order='C')))
 		fb.write(np.log10(np.asarray(CLDICE,order='C')))
+		fb.write(np.log10(np.asarray(REL,order='C')))
+		fb.write(np.log10(np.asarray(REI,order='C')))
 		if sys.version_info>=(3,0,0): bc=fb.write(bytes('</BINARY>',encoding = 'utf-8'))
 		else: bc=fb.write('</BINARY>')
 	fb.close()
+
+	print(U.shape, ASDIR.shape, press3D.shape)
 #End convert
 
 if __name__ == "__main__": convertgcm()

@@ -21,20 +21,29 @@ def convertgcm(filein = 'data/gcm_rocke3d', fileout = 'gcm_psg.dat', itime=0):
 	nfile = ncdf("%s_aijl.nc" % filein)
 	lat = (nfile.variables['lat'])[:]
 	lon = (nfile.variables['lon'])[:]; lon = lon + 180.
-	plm = np.array((nfile.variables['plm'])[:]);
-	tmp = np.array((nfile.variables['TempL'])[:]); #temperature in K (in level)
-	h2o = np.array((nfile.variables['SpHuL'])[:]); #specific humidity in kg/kg
-	h2o = h2o/(1.0-h2o); h2o = h2o*(28.0/18.0) + 1E-30; #Water vapor abundance [molecules/molecule]
-	cldice = np.array((nfile.variables['icecld'])[:]) + 1E-30; #Water ice clouds in kg/kg
-	cldliq = np.array((nfile.variables['wtrcld'])[:]) + 1E-30; #Liquid water clouds in kg/kg
+	plm = np.array((nfile.variables['plm'])[:])
+	tmp = np.array((nfile.variables['TempL'])[:]) # temperature in K (in level)
+	tmp = np.where((tmp>0) & (np.isfinite(tmp)), tmp, 300.0)
+	h2o = np.array((nfile.variables['SpHuL'])[:]) # specific humidity in kg/kg
+	h2o = np.where((h2o>0) & (np.isfinite(h2o)), h2o, 1e-30)
+	h2o = h2o/(1.0-h2o); h2o = h2o*(28.0/18.0) # Water vapor abundance [molecules/molecule]
+	Water = np.array((nfile.variables['wcmmr'])[:])  # Liquid water clouds in kg/kg
+	Water = np.where((Water>0) & (np.isfinite(Water)), Water, 1e-30)
+	WaterIce = np.array((nfile.variables['icmmr'])[:]) # Water ice clouds in kg/kg
+	WaterIce = np.where((WaterIce>0) & (np.isfinite(WaterIce)), WaterIce, 1e-30)
+	Water_size = np.array((nfile.variables['wcsiz'])[:])/1e6 # Size of liquid water clouds in m
+	Water_size = np.where((Water_size>0) & (np.isfinite(Water_size)), Water_size, 1e-6)
+	WaterIce_size = np.array((nfile.variables['icsiz'])[:])/1e6 # Size of ice clouds in m
+	WaterIce_size = np.where((WaterIce_size>0) & (np.isfinite(WaterIce_size)), WaterIce_size, 1e-6)
 	nfile.close()
 
 	nfile = ncdf("%s_aij.nc" % filein)
 	lat = (nfile.variables['lat'])[:]
 	lon = (nfile.variables['lon'])[:]; lon = lon + 180.
-	albedo = np.array((nfile.variables['grnd_alb'])[:])*1e-2; #ground albedo [0 to 1.0]
-	albedo = np.where((~np.isfinite(albedo)) | (albedo<0.) | (albedo>1.0), 0.3, albedo);
-	tsurf = np.array((nfile.variables['tgrnd'])[:]) + 273.15; #ground temperature [K]
+	albedo = np.array((nfile.variables['grnd_alb'])[:])*1e-2; # Ground albedo [0 to 1.0]
+	albedo = np.where((albedo>=0) & (albedo<=1.0) & (np.isfinite(albedo)), albedo, 0.3)
+	tsurf = np.array((nfile.variables['tgrnd'])[:]) + 273.15 # Ground temperature [K]
+	tsurf = np.where((tsurf>0) & (np.isfinite(tsurf)), tsurf, 300.0)
 	nfile.close()
 
 	# Transform variables into a 3D vectors
@@ -96,12 +105,12 @@ def convertgcm(filein = 'data/gcm_rocke3d', fileout = 'gcm_psg.dat', itime=0):
 	newf.append('<ATMOSPHERE-AABUN>1,1')
 	newf.append('<ATMOSPHERE-AUNIT>scl,scl')
 	newf.append('<ATMOSPHERE-ASIZE>1,1')
-	newf.append('<ATMOSPHERE-ASUNI>um,um')
+	newf.append('<ATMOSPHERE-ASUNI>scl,scl')#
 
 	# Save surface parameters
 	newf.append('<SURFACE-TEMPERATURE>300')
 	newf.append('<SURFACE-ALBEDO>0.2')
-	newf.append('<SURFACE-EMISSIVITY>0.8')
+	newf.append('<SURFACE-EMISSIVITY>1.0')
 	newf.append('<SURFACE-NSURF>0')
 
 	# Instrument parameters (defaults)
@@ -126,7 +135,7 @@ def convertgcm(filein = 'data/gcm_rocke3d', fileout = 'gcm_psg.dat', itime=0):
 	# Save GCM parameters
 	vars = '<ATMOSPHERE-GCM-PARAMETERS>'
 	vars = vars + str("%d,%d,%d,%.1f,%.1f,%.2f,%.2f" %(sz[2],sz[1],sz[0],lon[0],lat[0],lon[1]-lon[0],lat[1]-lat[0]))
-	vars = vars + ',Winds,Temperature,Tsurf,Albedo,Pressure,H2O,Water,WaterIce'
+	vars = vars + ',Winds,Temperature,Tsurf,Albedo,Pressure,H2O,Water,WaterIce,Water_size,WaterIce_size'
 	newf.append(vars)
 
 	with open(fileout,'w') as fw:
@@ -141,8 +150,10 @@ def convertgcm(filein = 'data/gcm_rocke3d', fileout = 'gcm_psg.dat', itime=0):
 		fb.write(np.asarray(albedo,order='C'))
 		fb.write(np.log10(np.asarray(press3D,order='C')))
 		fb.write(np.log10(np.asarray(h2o,order='C')))
-		fb.write(np.log10(np.asarray(cldliq,order='C')))
-		fb.write(np.log10(np.asarray(cldice,order='C')))
+		fb.write(np.log10(np.asarray(Water,order='C'))) #water cloud Reff
+		fb.write(np.log10(np.asarray(WaterIce,order='C'))) #ice cloud mmr
+		fb.write(np.log10(np.asarray(Water_size,order='C'))) # water cloud Reff
+		fb.write(np.log10(np.asarray(WaterIce_size,order='C'))) # ice cloud Reff
 		if sys.version_info>=(3,0,0): bc=fb.write(bytes('</BINARY>',encoding = 'utf-8'))
 		else: bc=fb.write('</BINARY>')
 	fb.close()
