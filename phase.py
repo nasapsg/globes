@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 # Parameters of the phase
 ncfile = 'data/gcm_exocam.nc' # Name of the netCDF file
-update = False        # Flag if we want to update the PSG/GlobES simulations or simply read/plot the spectra
+update = True        # Flag if we want to update the PSG/GlobES simulations or simply read/plot the spectra
 phase1 = 0.0         # Initial phase (degrees) for the simulation, 0 is sub-solar point, 180 is night-side
 phase2 = 360.0       # Final phase (degrees)
 dphase = 90.0        # Phase step (degrees)
@@ -29,7 +29,6 @@ convertgcm(ncfile, 'gcm_psg.dat')
 # GlobES/API calls can be sequentially, and PSG will remember the previous values
 # This means that we can upload parameters step-by-step. To reset your config for GlobES (use type=set), and to simply update (use type=upd)
 if update: os.system('curl -s -d app=globes -d type=set --data-urlencode file@gcm_psg.dat %s/api.php' % psgurl)
-print('curl -s -d app=globes -d type=set --data-urlencode file@gcm_psg.dat %s/api.php' % psgurl)
 
 # Define parameters of this run
 fr = open("config.txt", "w")
@@ -46,8 +45,6 @@ fr.write('<OBJECT-SOLAR-LATITUDE>0.0\n')
 fr.write('<OBJECT-OBS-LATITUDE>0.0\n')
 fr.close()
 if update: os.system('curl -s -d app=globes -d type=upd --data-urlencode file@config.txt %s/api.php' % psgurl)
-print('curl -s -d app=globes -d type=upd --data-urlencode file@config.txt %s/api.php' % psgurl)
-exit()
 
 # Calculate the spectra across the phases
 if not os.path.isdir('spectra'): os.system('mkdir spectra')
@@ -58,8 +55,6 @@ for phase in np.arange(phase1,phase2+dphase,dphase):
     fr.close()
     if phase>178 and phase<182: phase=182 # Add transit phase
     if update: os.system('curl -s -d app=globes --data-urlencode file@config.txt %s/api.php > spectra/phase%d.txt' % (psgurl,phase))
-    print('curl -s -d app=globes --data-urlencode file@config.txt %s/api.php > spectra/phase%d.txt' % (psgurl,phase))
-    exit()
     data = np.genfromtxt('spectra/phase%d.txt' % phase)
     plt.plot(data[:,0],data[:,1],label=phase)
     print(phase)
