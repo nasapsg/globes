@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------
 # Script to extract MERRA2 climatology and convert into PSG GCM files
 # Villanueva - NASA Goddard Space Flight Center
-# February 2021
+# March 2022
 # ---------------------------------------------------------------
 import sys, os
 import numpy as np
@@ -10,54 +10,62 @@ from PIL import Image
 # Module that performs the extraction and conversion
 def convertgcm(date = '2018/01/01 10:00', fileout = 'gcm_psg.dat', itime=0):
 
-	# Process date/time UT (YYYY/MM/DD HH:MN)
-	ss = date.split()
-	sd = ss[0].split('/')
-	if int(sd[0])>2010: mvr="400"
-	elif int(sd[0])>2000: mvr="300"
-	elif int(sd[0])>1991: mvr="200"
-	else: mvr="100"
-	st = ss[1].split(':')
-	itme = round((float(st[0])*60 + float(st[1]))/180)
-	if itme>=8: itme=7
-	if itme<0: itme=0
+	if not os.path.exists('gcm_merra.txt'):
+		# Process date/time UT (YYYY/MM/DD HH:MN)
+		ss = date.split()
+		sd = ss[0].split('/')
+		if int(sd[0])>2010: mvr="400"
+		elif int(sd[0])>2000: mvr="300"
+		elif int(sd[0])>1991: mvr="200"
+		else: mvr="100"
+		st = ss[1].split(':')
+		itme = round((float(st[0])*60 + float(st[1]))/180)
+		if itme>=8: itme=7
+		if itme<0: itme=0
 
-	# Define EarthData Login info (https://urs.earthdata.nasa.gov/)
-	user = 'user'
-	pwd = 'password'
+		# Define EarthData Login info (https://urs.earthdata.nasa.gov/)
+		user = 'user'
+		pwd = 'password'
 
-	# Parse and run request
-	cmd = 'curl -s -u %s:%s -b gcm_merra.ck -c gcm_merra.ck -m 12000 -L --location-trusted' % (user,pwd)
-	cmd = '%s -g https://goldsmr5.gesdisc.eosdis.nasa.gov/opendap/MERRA2/M2I3NVASM.5.12.4/' % cmd
-	cmd = '%s%s/%s/MERRA2_%s.inst3_3d_asm_Nv.%s%s%s.nc4.ascii?' % (cmd,sd[0],sd[1],mvr,sd[0],sd[1],sd[2])
-	cmd = '%sPL[%d:%d][0:71][0:360][0:575],T[%d:%d][0:71][0:360][0:575],' % (cmd,itme,itme,itme,itme)
-	cmd = '%sU[%d:%d][0:71][0:360][0:575],V[%d:%d][0:71][0:360][0:575],O3[%d:%d][0:71][0:360][0:575],' % (cmd,itme,itme,itme,itme,itme,itme)
-	cmd = '%sQV[%d:%d][0:71][0:360][0:575],QI[%d:%d][0:71][0:360][0:575],QL[%d:%d][0:71][0:360][0:575]' % (cmd,itme,itme,itme,itme,itme,itme)
-	cmd = '%s > gcm_merra.txt' % cmd
-	os.system(cmd)
+		# Parse and run request
+		cmd = 'curl -s -u %s:%s -b gcm_merra.ck -c gcm_merra.ck -m 12000 -L --location-trusted' % (user,pwd)
+		cmd = '%s -g https://goldsmr5.gesdisc.eosdis.nasa.gov/opendap/MERRA2/M2I3NVASM.5.12.4/' % cmd
+		cmd = '%s%s/%s/MERRA2_%s.inst3_3d_asm_Nv.%s%s%s.nc4.ascii?' % (cmd,sd[0],sd[1],mvr,sd[0],sd[1],sd[2])
+		cmd = '%sPL[%d:%d][0:71][0:360][0:575],T[%d:%d][0:71][0:360][0:575],' % (cmd,itme,itme,itme,itme)
+		cmd = '%sU[%d:%d][0:71][0:360][0:575],V[%d:%d][0:71][0:360][0:575],O3[%d:%d][0:71][0:360][0:575],' % (cmd,itme,itme,itme,itme,itme,itme)
+		cmd = '%sQV[%d:%d][0:71][0:360][0:575],QI[%d:%d][0:71][0:360][0:575],QL[%d:%d][0:71][0:360][0:575]' % (cmd,itme,itme,itme,itme,itme,itme)
+		cmd = '%s > gcm_merra.txt' % cmd
+		os.system(cmd)
+	#Endif
 
 	# Read file (bin by 4 in lat/lon to reduce the size by 16)
-	fp=open('gcm_merra.txt','r'); ll=fp.readline(); lines=fp.readlines(); fp.close()
-	if ll[0:15]!="Dataset: MERRA2": exit()
+	fp=open('gcm_merra.txt','r'); line=fp.readline();
+	if line[0:15]!="Dataset: MERRA2": exit()
 	data = np.zeros([8,72,91,144], dtype=np.float32)
 	npts = np.zeros([8,72,91,144], dtype=np.float32)
-	for line in lines:
+	while True:
+		line = fp.readline()
+		if not line: break
 		st = line.split(',')
-		vt = st[0].split('.')
-		if vt[1]=='lon': continue
-		i1 = st[0].find('lev=')+4; i2 = st[0][i1:].find(']')+i1; ialt=71-int(st[0][i1:i2])-1
-		i1 = st[0].find('lat=')+4; i2 = st[0][i1:].find(']')+i1; ilat=round((float(st[0][i1:i2])+90.0)/0.5)
-		ilat = round(0.25*ilat)                       # Bin the data by 4 to reduce file/memory size
-		if vt[0]=='U': ivar=0; kscl=1.0               # Horizontal u-wind [m/s]
-		elif vt[0]=='V': ivar=1; kscl=1.0             # Horizontal v-wind [m/s]
-		elif vt[0]=='T': ivar=2; kscl=1.0             # Temperature [K]
+		vt = st[0].split('[')
+
+		if len(vt)==1: continue # Disregard lat/lon/lev arrays
+		itime = int(vt[1][0:-1])          # The curl command is for a specific time, so one time is returned only (always 0)
+		ialt  = 71 - int(vt[2][0:-1])     # Altitudes are reversed in MERRA (0:top, 71:bottom)
+		ilat  = round(int(vt[3][0:-1])/4) # Bin latitude by 4
+		if ilat>=91: ilat=90
+
+		if   vt[0]=='U':  ivar=0; kscl=1.0            # Horizontal u-wind [m/s]
+		elif vt[0]=='V':  ivar=1; kscl=1.0            # Horizontal v-wind [m/s]
+		elif vt[0]=='T':  ivar=2; kscl=1.0            # Temperature [K]
 		elif vt[0]=='PL': ivar=3; kscl=1e-5           # Pressure [bar] (converted from Pa)
 		elif vt[0]=='O3': ivar=4; kscl=28.97/48.0     # O3 ozone [mol/mol] (converted from kg/kg)
 		elif vt[0]=='QV': ivar=5; kscl=28.97/18.0     # H2O water vapor [mol/mol] (converted from kg/kg)
 		elif vt[0]=='QI': ivar=6; kscl=1.0            # H2O cloud water ice [kg/kg]
 		elif vt[0]=='QL': ivar=7; kscl=1.0            # H2O cloud liquie water [kg/kg]
+
 		for i in range(0,576):
-			ilon = round(0.25*i)
+			ilon = round(i/4) # Bin longitude by 4
 			if ilon>=144: ilon=ilon-144
 			val = float(st[i+1])*kscl
 			if ivar>2:
@@ -68,10 +76,11 @@ def convertgcm(date = '2018/01/01 10:00', fileout = 'gcm_psg.dat', itime=0):
 			npts[ivar,ialt,ilat,ilon] = npts[ivar,ialt,ilat,ilon] + 1
 		#Endfor
 	#Endfor
+	fp.close()
 	data = data/npts
 
 	# Process albedo data from image
-	im = np.array(Image.open('data/earth.png'))
+	im = np.array(Image.open('earth.png'))
 	imsz = im.shape
 	tflux = np.sum(im[:,:,0:3], axis=2)/(3.0*255.0)
 	albedo = np.zeros([91,144], dtype=np.float32)
